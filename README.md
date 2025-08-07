@@ -1,59 +1,14 @@
-# David 프로젝트
+## 반달곰 커피 홈페이지
 
-Flask 기반의 웹 애플리케이션으로, 텍스트를 음성으로 변환하는 기능과 메뉴 페이지를 제공합니다.
+참조링크: https://반달곰%20커피
 
-## 기능
+오디오 출력 소스코드
 
-- **음성 변환**: 텍스트를 음성으로 변환하여 오디오 파일로 제공
-- **메뉴 페이지**: 간단한 메뉴 선택 인터페이스 제공
-
-## 프로젝트 구조
-
-```
-david/
-├── app.py              # Flask 애플리케이션 메인 파일
-├── templates/
-│   └── menu.html      # 메뉴 페이지 템플릿
-└── README.md          # 프로젝트 설명서
+```python
+lang = request.args.get('lang', DEFAULT_LANG)
+fp = BytesIO()
+gTTS(text, "com", lang).write_to_fp(fp)
+encoded_audio_data = base64.b64encode(fp.getvalue())
 ```
 
-## 주요 기능
-
-### 1. 음성 변환 (`/`)
-- 기본 텍스트 "Hello, DevOps"를 음성으로 변환
-- 언어 파라미터 지원 (기본값: 한국어)
-- 오디오 파일로 직접 스트리밍
-
-### 2. 메뉴 페이지 (`/menu`)
-- 핫초코, 커피, 녹차 메뉴 버튼 제공
-- 각 메뉴별 페이지로 이동하는 기능
-
-## 기술 스택
-
-- **Flask**: 웹 프레임워크
-- **gTTS**: Google Text-to-Speech 라이브러리
-- **HTML**: 프론트엔드 템플릿
-
-## 실행 방법
-
-1. 필요한 패키지 설치:
-```bash
-pip install flask gtts
-```
-
-2. 애플리케이션 실행:
-```bash
-python app.py
-```
-
-3. 브라우저에서 접속:
-- 메인 페이지: `http://localhost:80`
-- 메뉴 페이지: `http://localhost:80/menu`
-
-## 환경 변수
-
-- `DEFAULT_LANG`: 기본 언어 설정 (기본값: 'ko')
-
-## 포트
-
-애플리케이션은 기본적으로 80번 포트에서 실행됩니다. 
+![David](david.jpg)
