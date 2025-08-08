@@ -106,9 +106,7 @@ def convert_to_dict(sorted_entries):
 
 
 def save_to_json(log_dict, output_file_path):
-    """
-    Dict 객체를 JSON 파일로 저장합니다.
-    """
+    """Dict 객체를 JSON 파일로 저장"""
     try:
         with open(output_file_path, 'w', encoding='utf-8') as file:
             json.dump(log_dict, file, ensure_ascii=False, indent=2)
