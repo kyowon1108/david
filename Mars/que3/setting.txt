@@ -1,0 +1,8 @@
+{
+  "show_system_info": true,
+  "show_load_info": true,
+  "show_sensor_data": true,
+  "sensor_interval": 5,
+  "system_interval": 20
+}
+
