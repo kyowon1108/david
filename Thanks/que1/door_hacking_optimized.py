@@ -15,6 +15,23 @@ def try_password(zip_file_path, password):
         return False, password
 
 
+def generate_password_batch(start_index, batch_size, chars):
+    """특정 범위의 암호 배치를 생성합니다."""
+    passwords = []
+    count = 0
+    
+    for password_tuple in product(chars, repeat=6):
+        if count >= start_index:
+            password = ''.join(password_tuple)
+            passwords.append(password)
+            
+            if len(passwords) >= batch_size:
+                break
+        count += 1
+    
+    return passwords
+
+
 def unlock_zip_optimized(zip_file_path, max_workers=4):
     """
     최적화된 방법으로 ZIP 파일의 암호를 찾습니다.
@@ -36,40 +53,31 @@ def unlock_zip_optimized(zip_file_path, max_workers=4):
     
     # 가능한 문자들 (숫자와 소문자 알파벳)
     chars = string.digits + string.ascii_lowercase
+    total_combinations = len(chars) ** 6
     
     # 시작 시간 기록
     start_time = time.time()
     attempts = 0
     
     print(f'최적화된 암호 해독을 시작합니다...')
-    print(f'총 조합 수: {len(chars) ** 6:,}')
+    print(f'총 조합 수: {total_combinations:,}')
     print(f'동시 실행 스레드 수: {max_workers}')
     print('-' * 40)
     
-    # 암호 조합을 배치로 나누어 처리
-    batch_size = 1000
-    password_batches = []
+    # 배치 크기와 총 배치 수 계산
+    batch_size = 10000  # 배치 크기를 늘림
+    total_batches = (total_combinations + batch_size - 1) // batch_size
     
-    for i, password_tuple in enumerate(product(chars, repeat=6)):
-        password = ''.join(password_tuple)
-        if i % batch_size == 0:
-            batch = []
-        batch.append(password)
-        if len(batch) == batch_size:
-            password_batches.append(batch)
-    
-    # 마지막 배치 추가
-    if batch:
-        password_batches.append(batch)
-    
-    print(f'총 {len(password_batches)}개의 배치로 나누어 처리합니다.')
+    print(f'배치 크기: {batch_size:,}, 총 배치 수: {total_batches:,}')
     
     # ThreadPoolExecutor를 사용한 병렬 처리
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # 모든 배치에 대해 작업 제출
+        # 배치별로 작업 제출
         future_to_batch = {}
-        for batch_idx, batch in enumerate(password_batches):
-            future = executor.submit(process_batch, zip_file_path, batch, batch_idx)
+        
+        for batch_idx in range(total_batches):
+            start_index = batch_idx * batch_size
+            future = executor.submit(process_batch_range, zip_file_path, start_index, batch_size, chars, batch_idx)
             future_to_batch[future] = batch_idx
         
         # 완료된 작업들 처리
@@ -77,7 +85,7 @@ def unlock_zip_optimized(zip_file_path, max_workers=4):
             batch_idx = future_to_batch[future]
             try:
                 result = future.result()
-                attempts += len(password_batches[batch_idx])
+                attempts += batch_size
                 
                 if result:
                     # 암호를 찾았음
@@ -103,13 +111,13 @@ def unlock_zip_optimized(zip_file_path, max_workers=4):
                 # 진행 상황 출력
                 elapsed_time = time.time() - start_time
                 rate = attempts / elapsed_time if elapsed_time > 0 else 0
-                progress = (attempts / (len(chars) ** 6)) * 100
+                progress = (attempts / total_combinations) * 100
                 
-                # 현재 시도 중인 암호 패턴 표시
-                current_password = ''.join(password_batches[batch_idx][0])
-                print(f'배치 {batch_idx + 1} 완료, 시도 횟수: {attempts:,}, '
+                # 현재 시도 중인 암호 패턴 표시 (대략적인 위치)
+                current_pattern = get_password_at_index(start_index, chars)
+                print(f'배치 {batch_idx + 1}/{total_batches} 완료, 시도 횟수: {attempts:,}, '
                       f'진행률: {progress:.2f}%, 속도: {rate:.0f}번/초')
-                print(f'현재 암호 패턴: {current_password}')
+                print(f'현재 암호 패턴: {current_pattern}')
                 
             except Exception as e:
                 print(f'배치 {batch_idx + 1} 처리 중 오류 발생: {e}')
@@ -124,13 +132,33 @@ def unlock_zip_optimized(zip_file_path, max_workers=4):
     return None
 
 
-def process_batch(zip_file_path, password_batch, batch_idx):
-    """암호 배치를 처리합니다."""
-    for password in password_batch:
+def process_batch_range(zip_file_path, start_index, batch_size, chars, batch_idx):
+    """특정 범위의 암호 배치를 처리합니다."""
+    passwords = generate_password_batch(start_index, batch_size, chars)
+    
+    for password in passwords:
         success, found_password = try_password(zip_file_path, password)
         if success:
             return found_password
     return None
+
+
+def get_password_at_index(index, chars):
+    """특정 인덱스의 암호를 계산합니다."""
+    if index == 0:
+        return '000000'
+    
+    # 간단한 근사치 계산
+    total_chars = len(chars)
+    positions = []
+    temp_index = index
+    
+    for i in range(6):
+        pos = temp_index % total_chars
+        positions.insert(0, chars[pos])
+        temp_index //= total_chars
+    
+    return ''.join(positions)
 
 
 def main():
@@ -143,7 +171,7 @@ def main():
     
     # CPU 코어 수에 따른 최적 스레드 수 결정
     import os
-    optimal_workers = min(os.cpu_count() or 1, 8)  # 최대 8개로 제한
+    optimal_workers = min(os.cpu_count() or 1, 4)  # 최대 4개로 제한하여 메모리 사용량 줄임
     
     print(f'시스템 CPU 코어 수: {os.cpu_count() or 1}')
     print(f'권장 스레드 수: {optimal_workers}')
