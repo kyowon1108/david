@@ -1,103 +1,154 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+비밀번호 찾기 - 효율적인 ZIP 파일 해킹 도구
+메모리 효율성을 고려하여 제너레이터를 사용합니다.
+"""
+
 import zipfile
+import itertools
 import time
 import string
-from itertools import product
+from typing import Generator, Optional
 
 
-def unlock_zip(zip_file_path):
+def generate_passwords() -> Generator[str, None, None]:
     """
-    ZIP 파일의 암호를 무차별 대입으로 찾습니다.
+    가능한 모든 6자리 비밀번호를 생성하는 제너레이터
+    숫자와 소문자 알파벳만 사용 (특수문자 제외)
+    """
+    chars = string.digits + string.ascii_lowercase  # 0-9, a-z
+    
+    # 6자리 조합을 생성
+    for password in itertools.product(chars, repeat=6):
+        yield ''.join(password)
+
+
+def unlock_zip(zip_path: str = "emergency_storage_key.zip") -> Optional[str]:
+    """
+    ZIP 파일의 비밀번호를 찾는 함수
     
     Args:
-        zip_file_path (str): 암호를 찾을 ZIP 파일 경로
+        zip_path: 해킹할 ZIP 파일 경로
         
     Returns:
-        str: 찾은 암호 또는 None
+        찾은 비밀번호 또는 None (실패 시)
     """
-    # ZIP 파일 확인
-    try:
-        with zipfile.ZipFile(zip_file_path, 'r') as zip_file:
-            print(f'ZIP 파일을 열었습니다: {zip_file_path}')
-    except Exception as e:
-        print(f'오류: {e}')
-        return None
-    
-    # 가능한 문자들 (숫자와 소문자 알파벳)
-    chars = string.digits + string.ascii_lowercase
+    print("ZIP 파일 비밀번호 해킹 시작!")
+    print(f"대상 파일: {zip_path}")
+    print("=" * 50)
     
     # 시작 시간 기록
     start_time = time.time()
-    attempts = 0
     
-    print(f'암호 해독을 시작합니다...')
-    print(f'총 조합 수: {len(chars) ** 6:,}')
-    print('-' * 40)
+    # 총 가능한 조합 수 계산
+    total_combinations = 36 ** 6  # 10(숫자) + 26(소문자) = 36개 문자, 6자리
+    print(f"총 시도할 조합 수: {total_combinations:,}")
     
-    # 6자리 암호 조합 생성 및 시도
-    for password_tuple in product(chars, repeat=6):
-        password = ''.join(password_tuple)
-        attempts += 1
-        
-        # 진행 상황 출력 (1000번마다)
-        if attempts % 1000 == 0:
-            elapsed_time = time.time() - start_time
-            rate = attempts / elapsed_time if elapsed_time > 0 else 0
-            print(f'시도 횟수: {attempts:,}, 속도: {rate:.0f}번/초')
-        
-        try:
-            with zipfile.ZipFile(zip_file_path, 'r') as zip_file:
-                zip_file.extractall(pwd=password.encode('utf-8'))
-                # 암호가 맞으면 여기까지 실행됨
-                end_time = time.time()
-                total_time = end_time - start_time
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as zip_file:
+            # 파일 목록 확인
+            file_list = zip_file.namelist()
+            print(f"ZIP 내 파일: {file_list}")
+            print("=" * 50)
+            
+            # 비밀번호 시도
+            attempt_count = 0
+            last_progress_time = start_time
+            
+            for password in generate_passwords():
+                attempt_count += 1
                 
-                print('-' * 40)
-                print(f'🎉 암호를 찾았습니다!')
-                print(f'암호: {password}')
-                print(f'총 시도 횟수: {attempts:,}')
-                print(f'총 소요 시간: {total_time:.2f}초')
+                # 진행률 표시 (1초마다)
+                current_time = time.time()
+                if current_time - last_progress_time >= 1.0:
+                    elapsed = current_time - start_time
+                    progress = (attempt_count / total_combinations) * 100
+                    rate = attempt_count / elapsed if elapsed > 0 else 0
+                    
+                    print(f"진행 시간: {elapsed:.1f}초 | "
+                          f"시도 횟수: {attempt_count:,} | "
+                          f"진행률: {progress:.2f}% | "
+                          f"속도: {rate:.0f} 시도/초")
+                    
+                    last_progress_time = current_time
                 
-                # 암호를 password.txt에 저장
+                # 비밀번호 시도
                 try:
-                    with open('password.txt', 'w', encoding='utf-8') as f:
-                        f.write(password)
-                    print(f'암호가 password.txt에 저장되었습니다.')
-                except Exception as e:
-                    print(f'경고: password.txt 저장 중 오류 발생: {e}')
-                
-                return password
-                
-        except:
-            # 잘못된 암호
-            continue
+                    # 먼저 파일 무결성 확인
+                    if zip_file.testzip() is not None:
+                        print("경고: ZIP 파일이 손상되었을 수 있습니다.")
+                    
+                    # 개별 파일로 테스트
+                    for file_name in file_list:
+                        try:
+                            # 파일 읽기 시도
+                            content = zip_file.read(file_name, pwd=password.encode('utf-8'))
+                            
+                            # 성공! (내용이 실제로 읽혔는지 확인)
+                            if content:
+                                end_time = time.time()
+                                total_time = end_time - start_time
+                                
+                                print("\n" + "=" * 50)
+                                print("비밀번호 발견!")
+                                print(f"비밀번호: {password}")
+                                print(f"총 소요 시간: {total_time:.2f}초")
+                                print(f"총 시도 횟수: {attempt_count:,}")
+                                print(f"평균 속도: {attempt_count/total_time:.0f} 시도/초")
+                                print("=" * 50)
+                                
+                                # 비밀번호를 파일로 저장
+                                with open("password.txt", "w", encoding="utf-8") as f:
+                                    f.write(password)
+                                print("비밀번호가 password.txt에 저장되었습니다.")
+                                
+                                return password
+                            
+                        except (zipfile.BadZipFile, RuntimeError, Exception):
+                            # 잘못된 비밀번호, 계속 시도
+                            continue
+                    
+                    # 모든 파일에서 실패한 경우
+                    continue
+                    
+                except Exception:
+                    # 예상치 못한 오류, 계속 시도
+                    continue
+                    
+    except FileNotFoundError:
+        print(f"오류: {zip_path} 파일을 찾을 수 없습니다.")
+        return None
+    except Exception as e:
+        print(f"오류 발생: {e}")
+        return None
     
-    # 모든 조합을 시도했지만 암호를 찾지 못함
+    # 모든 조합을 시도했지만 실패
     end_time = time.time()
     total_time = end_time - start_time
-    print('-' * 40)
-    print(f'❌ 암호를 찾지 못했습니다.')
-    print(f'총 시도 횟수: {attempts:,}')
-    print(f'총 소요 시간: {total_time:.2f}초')
+    
+    print("\n" + "=" * 50)
+    print("모든 가능한 비밀번호를 시도했지만 실패했습니다.")
+    print(f"총 소요 시간: {total_time:.2f}초")
+    print(f"총 시도 횟수: {attempt_count:,}")
+    print("=" * 50)
+    
     return None
 
 
 def main():
     """메인 함수"""
-    zip_file = 'emergency_storage_key.zip'
+    print("Mars Mission - Emergency Storage Key Hacker")
+    print("=" * 50)
     
-    print('=' * 50)
-    print('🚀 ZIP 파일 암호 해독 프로그램')
-    print('=' * 50)
-    
-    password = unlock_zip(zip_file)
+    # 비밀번호 찾기 실행
+    password = unlock_zip()
     
     if password:
-        print(f'\n✅ 성공: 암호 "{password}"를 찾았습니다!')
+        print(f"\n성공적으로 비밀번호를 찾았습니다: {password}")
     else:
-        print(f'\n❌ 실패: 암호를 찾지 못했습니다.')
-    
-    print('=' * 50)
+        print("\n비밀번호를 찾지 못했습니다.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
