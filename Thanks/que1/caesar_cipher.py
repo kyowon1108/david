@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-카이사르 암호 해독 프로그램
-password.txt 파일을 읽어와서 카이사르 암호를 해독합니다.
-"""
-
 import string
 
 
@@ -53,14 +46,14 @@ def read_password_file():
 
 
 def save_result(decoded_text, shift):
-    """해독 결과를 result.txt에 저장합니다."""
+    """해독 결과를 caesar_result.txt에 저장합니다."""
     try:
-        with open('result.txt', 'w', encoding='utf-8') as f:
+        with open('caesar_result.txt', 'w', encoding='utf-8') as f:
             f.write(f'해독된 텍스트: {decoded_text}\n')
             f.write(f'사용된 자리수: {shift}\n')
-        print(f'결과가 result.txt에 저장되었습니다.')
+        print(f'결과가 caesar_result.txt에 저장되었습니다.')
     except Exception as e:
-        print(f'경고: result.txt 저장 중 오류 발생: {e}')
+        print(f'경고: caesar_result.txt 저장 중 오류 발생: {e}')
 
 
 def main():

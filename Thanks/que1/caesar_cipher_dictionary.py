@@ -104,16 +104,17 @@ def read_password_file():
 
 
 def save_result(decoded_text, shift, score):
-    """해독 결과를 result.txt에 저장합니다."""
+    """해독 결과를 caesar_dictionary_result.txt에 저장합니다."""
     try:
-        with open('result.txt', 'w', encoding='utf-8') as f:
+        with open('caesar_dictionary_result.txt', 'w', encoding='utf-8') as f:
             f.write(f'해독된 텍스트: {decoded_text}\n')
+
             f.write(f'사용된 자리수: {shift}\n')
             f.write(f'단어 점수: {score}\n')
             f.write(f'해독 방법: 사전 기반 자동 해독\n')
-        print(f'결과가 result.txt에 저장되었습니다.')
+        print(f'결과가 caesar_dictionary_result.txt에 저장되었습니다.')
     except Exception as e:
-        print(f'경고: result.txt 저장 중 오류 발생: {e}')
+        print(f'경고: caesar_dictionary_result.txt 저장 중 오류 발생: {e}')
 
 
 def main():
@@ -151,7 +152,7 @@ def main():
         # 사용자 확인
         confirm = input(f'\n이 결과를 사용하시겠습니까? (y/n): ').strip().lower()
         if confirm in ['y', 'yes', '네']:
-            print('결과가 result.txt에 저장되었습니다.')
+            print('결과 저장을 완료했습니다.')
         else:
             print('사용자가 결과 저장을 취소했습니다.')
     else:
