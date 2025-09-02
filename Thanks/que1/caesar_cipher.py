@@ -1,9 +1,8 @@
 import string
 
-
 def caesar_cipher_decode(target_text, shift):
     """
-    카이사르 암호를 해독합니다.
+    카이사르 암호를 해독함
     
     Args:
         target_text (str): 해독할 암호문
@@ -57,7 +56,6 @@ def save_result(decoded_text, shift):
 
 
 def main():
-    """메인 함수"""
     print('=' * 50)
     print('🔐 카이사르 암호 해독 프로그램')
     print('=' * 50)

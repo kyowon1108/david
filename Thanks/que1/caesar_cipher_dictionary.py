@@ -1,15 +1,8 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-사전 기반 카이사르 암호 자동 해독 프로그램
-password.txt 파일을 읽어와서 사전을 기반으로 자동으로 카이사르 암호를 해독합니다.
-"""
-
 import string
 
 
 def create_dictionary():
-    """일반적인 영어 단어들의 사전을 생성합니다."""
+    """일반적인 영어 단어들의 사전을 생성"""
     # 일반적인 영어 단어들
     common_words = {
         'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i',
@@ -35,7 +28,7 @@ def create_dictionary():
 
 
 def caesar_cipher_decode(target_text, shift):
-    """카이사르 암호를 해독합니다."""
+    """카이사르 암호 해독"""
     result = ''
     
     for char in target_text:
@@ -52,7 +45,7 @@ def caesar_cipher_decode(target_text, shift):
 
 
 def calculate_word_score(decoded_text, dictionary):
-    """해독된 텍스트의 단어 점수를 계산합니다."""
+    """해독된 텍스트의 단어 점수를 계산"""
     words = decoded_text.lower().split()
     score = 0
     
@@ -66,7 +59,7 @@ def calculate_word_score(decoded_text, dictionary):
 
 
 def auto_decode_caesar(encrypted_text, dictionary):
-    """사전을 기반으로 자동으로 카이사르 암호를 해독합니다."""
+    """사전을 기반으로 자동으로 카이사르 암호 해독"""
     best_shift = 0
     best_score = 0
     best_decoded = ''
@@ -88,7 +81,7 @@ def auto_decode_caesar(encrypted_text, dictionary):
 
 
 def read_password_file():
-    """password.txt 파일을 읽어옵니다."""
+    """password.txt 파일 로드"""
     try:
         with open('password.txt', 'r', encoding='utf-8') as f:
             content = f.read().strip()
@@ -104,7 +97,7 @@ def read_password_file():
 
 
 def save_result(decoded_text, shift, score):
-    """해독 결과를 caesar_dictionary_result.txt에 저장합니다."""
+    """해독 결과를 caesar_dictionary_result.txt에 저장"""
     try:
         with open('caesar_dictionary_result.txt', 'w', encoding='utf-8') as f:
             f.write(f'해독된 텍스트: {decoded_text}\n')
@@ -118,7 +111,6 @@ def save_result(decoded_text, shift, score):
 
 
 def main():
-    """메인 함수"""
     print('=' * 50)
     print('🔐 사전 기반 카이사르 암호 자동 해독 프로그램')
     print('=' * 50)

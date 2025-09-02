@@ -77,7 +77,7 @@ class MasImageHelper:
         Returns:
             전처리된 이미지
         """
-        # 노이즈 제거
+        # 노이즈 제거 (적절한 필터링)
         denoised = cv2.bilateralFilter(img, 9, 75, 75)
         
         # 대비 향상 (CLAHE 사용)
@@ -107,7 +107,7 @@ class MasImageHelper:
         boxes = []
         scores = []
         
-        # 여러 스케일에서 감지 수행
+        # 적절한 스케일에서 감지 수행 (과도한 감지 방지)
         scales = [0.8, 1.0, 1.2]
         
         for scale in scales:
@@ -118,13 +118,12 @@ class MasImageHelper:
                 scaled_img = img
             
             try:
+                # 적절한 파라미터로 감지 (오탐 방지)
                 rects, weights = hog.detectMultiScale(
                     scaled_img,
-                    winStride=(4, 4),
-                    padding=(8, 8),
-                    scale=1.05,
-                    finalThreshold=0.5,
-                    useMeanshiftGrouping=False
+                    winStride=(4, 4),  # 적절한 스트라이드
+                    padding=(8, 8),    # 적절한 패딩
+                    scale=1.05         # 적절한 스케일
                 )
                 
                 if len(rects) > 0:
@@ -140,7 +139,8 @@ class MasImageHelper:
                         
                         # weights가 있으면 사용, 없으면 기본값
                         if i < len(weights):
-                            scores.append(float(weights[i]))
+                            # HOG 감지 결과는 적절한 신뢰도 부여
+                            scores.append(float(weights[i]) * 1.0)
                         else:
                             scores.append(1.0)
                             
@@ -180,11 +180,12 @@ class MasImageHelper:
                 if cascade.empty():
                     continue
                 
-                # 여러 파라미터로 감지 시도
+                # 적절한 파라미터로 감지 시도 (오탐 방지)
                 params = [
-                    {'scaleFactor': 1.1, 'minNeighbors': 3, 'minSize': (30, 30)},
-                    {'scaleFactor': 1.05, 'minNeighbors': 4, 'minSize': (50, 50)},
-                    {'scaleFactor': 1.2, 'minNeighbors': 2, 'minSize': (40, 40)}
+                    {'scaleFactor': 1.05, 'minNeighbors': 4, 'minSize': (30, 30)},
+                    {'scaleFactor': 1.1, 'minNeighbors': 5, 'minSize': (40, 40)},
+                    {'scaleFactor': 1.15, 'minNeighbors': 4, 'minSize': (50, 50)},
+                    {'scaleFactor': 1.2, 'minNeighbors': 3, 'minSize': (60, 60)}
                 ]
                 
                 for param in params:
@@ -192,6 +193,7 @@ class MasImageHelper:
                     
                     for (x, y, w, h) in rects:
                         boxes.append([x, y, w, h])
+                        # Cascade 감지 결과는 적절한 신뢰도
                         scores.append(0.8 if 'fullbody' in cascade_file else 0.6)
                         
             except Exception as e:
@@ -258,15 +260,15 @@ class MasImageHelper:
         for box in boxes:
             x, y, w, h = box
             
-            # 크기 필터링
-            if w < 20 or h < 30:  # 너무 작은 박스 제거
+            # 크기 필터링 (강화된 기준 - 오탐 방지)
+            if w < 25 or h < 35:  # 적절한 크기 이상만 허용
                 continue
-            if w > img_w * 0.8 or h > img_h * 0.8:  # 너무 큰 박스 제거
+            if w > img_w * 0.7 or h > img_h * 0.7:  # 적절한 크기 이하만 허용
                 continue
             
-            # 비율 필터링 (사람의 일반적인 비율)
+            # 비율 필터링 (강화된 기준 - 사람 비율에 맞게)
             ratio = h / w if w > 0 else 0
-            if ratio < 1.2 or ratio > 4.0:  # 사람의 일반적인 세로/가로 비율
+            if ratio < 1.5 or ratio > 3.5:  # 사람의 일반적인 비율 범위
                 continue
             
             # 경계 확인
@@ -455,6 +457,7 @@ class CCTVViewer:
         print('  → 또는 D: 다음 이미지') 
         print('  ESC 또는 Q: 종료')
         print('  P: 사람 검색 모드로 전환')
+        print('  (방향키도 지원됩니다)')
         
         self.display_current_image()
         
@@ -463,9 +466,9 @@ class CCTVViewer:
             
             if key == 27 or key == ord('q') or key == ord('Q'):  # ESC 또는 q
                 break
-            elif key == 83 or key == ord('d') or key == ord('D'):  # → 또는 d
+            elif key == 83 or key == ord('d') or key == ord('D') or key == 3:  # → 또는 d 또는 오른쪽 방향키
                 self.next_image()
-            elif key == 81 or key == ord('a') or key == ord('A'):  # ← 또는 a  
+            elif key == 81 or key == ord('a') or key == ord('A') or key == 2:  # ← 또는 a 또는 왼쪽 방향키
                 self.previous_image()
             elif key == ord('p') or key == ord('P'):  # 사람 검색 모드
                 cv2.destroyAllWindows()

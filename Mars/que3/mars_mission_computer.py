@@ -182,47 +182,7 @@ class MissionComputer:
         self.env_history = recent_data
     
     def get_mission_computer_info(self):
-        """미션 컴퓨터 시스템 정보 수집 (한 번만 실행)"""
-        try:
-            system_info = {
-                'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'system_info': {
-                    'operating_system': platform.system(),
-                    'os_version': platform.version(),
-                    'cpu_type': platform.processor() or platform.machine(),
-                    'cpu_cores': os.cpu_count(),
-                    'memory_size_gb': round(psutil.virtual_memory().total / (1024**3), 2)
-                }
-            }
-            
-            if self.settings.get('show_system_info', True):
-                print(f'[시스템 정보] {json.dumps(system_info, indent=2, ensure_ascii=False)}')
-                
-        except Exception as e:
-            print(f'시스템 정보 수집 오류: {e}')
-    
-    def get_mission_computer_load(self):
-        """미션 컴퓨터 부하 정보 수집 (한 번만 실행)"""
-        try:
-            load_info = {
-                'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'load_info': {
-                    'cpu_usage_percent': round(psutil.cpu_percent(interval=1), 2),
-                    'memory_usage_percent': round(psutil.virtual_memory().percent, 2),
-                    'memory_available_gb': round(psutil.virtual_memory().available / (1024**3), 2)
-                }
-            }
-            
-            if self.settings.get('show_load_info', True):
-                print(f'[시스템 부하] {json.dumps(load_info, indent=2, ensure_ascii=False)}')
-                
-        except Exception as e:
-            print(f'시스템 부하 수집 오류: {e}')
-    
-    def get_mission_computer_info_continuous(self):
-        """미션 컴퓨터 시스템 정보 수집 (지속적 실행 - 멀티스레드용)"""
-        print('=== 시스템 정보 모니터링 시작 ===')
-        
+        """미션 컴퓨터 시스템 정보 수집 (20초마다 반복)"""
         while self.running:
             try:
                 system_info = {
@@ -245,10 +205,8 @@ class MissionComputer:
                 print(f'시스템 정보 수집 오류: {e}')
                 time.sleep(5)
     
-    def get_mission_computer_load_continuous(self):
-        """미션 컴퓨터 부하 정보 수집 (지속적 실행 - 멀티스레드용)"""
-        print('=== 시스템 부하 모니터링 시작 ===')
-        
+    def get_mission_computer_load(self):
+        """미션 컴퓨터 부하 정보 수집 (20초마다 반복)"""
         while self.running:
             try:
                 load_info = {
@@ -272,7 +230,7 @@ class MissionComputer:
     def stop_system(self):
         """시스템 정지"""
         self.running = False
-        print('System stopped....')
+        print('System stoped….')
 
 
 def signal_handler(signum, frame):
@@ -287,9 +245,9 @@ def run_multithread():
     
     RunComputer = MissionComputer() # MissionComputer 클래스를 RunComputer 라는 이름으로 인스턴스화
     
-    # 스레드 생성
-    thread1 = threading.Thread(target=RunComputer.get_mission_computer_info_continuous, daemon=True)
-    thread2 = threading.Thread(target=RunComputer.get_mission_computer_load_continuous, daemon=True)
+    # 스레드 생성 - 기존 메소드 사용
+    thread1 = threading.Thread(target=RunComputer.get_mission_computer_info, daemon=True)
+    thread2 = threading.Thread(target=RunComputer.get_mission_computer_load, daemon=True)
     thread3 = threading.Thread(target=RunComputer.get_sensor_data, daemon=True)
     
     # 스레드 시작
@@ -310,9 +268,6 @@ def run_multithread():
     print('멀티스레드 실행 완료')
 
 
-
-
-
 def run_multiprocess():
     """멀티프로세스 실행"""
     print('=== 멀티프로세스 모드 시작 ===')
@@ -322,9 +277,9 @@ def run_multiprocess():
     RunComputer2 = MissionComputer()
     RunComputer3 = MissionComputer()
     
-    # 각각을 별도 프로세스로 실행
-    process1 = multiprocessing.Process(target=RunComputer1.get_mission_computer_info_continuous)
-    process2 = multiprocessing.Process(target=RunComputer2.get_mission_computer_load_continuous)
+    # 각각을 별도 프로세스로 실행 - 기존 메소드 사용
+    process1 = multiprocessing.Process(target=RunComputer1.get_mission_computer_info)
+    process2 = multiprocessing.Process(target=RunComputer2.get_mission_computer_load)
     process3 = multiprocessing.Process(target=RunComputer3.get_sensor_data)
     
     try:
@@ -337,6 +292,7 @@ def run_multiprocess():
         while True:
             user_input = input('시스템을 중지하려면 "q" 입력: ')
             if user_input.lower() == 'q':
+                print('System stoped….')
                 break
     
     except Exception as e:
@@ -386,16 +342,71 @@ def main():
                 
             elif choice == '2':
                 RunComputer = MissionComputer()
-                print('싱글 스레드 모드 - Ctrl+C로 종료')
+                print('싱글 스레드 모드 - q로 종료 또는 Ctrl+C')
                 
-                # 시스템 정보 및 부하 한 번 출력
-                RunComputer.get_mission_computer_info()
-                time.sleep(2)
-                RunComputer.get_mission_computer_load()
-                time.sleep(2)
+                # 시스템 정보 및 부하 지속 출력 (20초마다 반복)
+                print('시스템 정보 및 부하 모니터링 시작 (20초마다 반복, q 또는 Ctrl+C로 종료)')
                 
-                # 센서 데이터 지속 출력 (5초마다 반복, Ctrl+C로 종료)
-                print('센서 데이터 모니터링 시작 (5초마다 반복, Ctrl+C로 종료)')
+                # q 입력 감지를 위한 백그라운드 입력 스레드
+                def _single_input_listener():
+                    try:
+                        while RunComputer.running:
+                            user_input = input('시스템을 중지하려면 "q" 입력: ')
+                            if user_input.lower() == 'q':
+                                RunComputer.stop_system()
+                                break
+                    except Exception as e:
+                        print(f'오류 발생: {e}')
+
+                threading.Thread(target=_single_input_listener, daemon=True).start()
+                
+                # 시스템 정보 및 부하를 별도 스레드로 실행
+                def _system_monitor():
+                    try:
+                        while RunComputer.running:
+                            # 시스템 정보 출력
+                            if RunComputer.settings.get('show_system_info', True):
+                                system_info = {
+                                    'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                    'system_info': {
+                                        'operating_system': platform.system(),
+                                        'os_version': platform.version(),
+                                        'cpu_type': platform.processor() or platform.machine(),
+                                        'cpu_cores': os.cpu_count(),
+                                        'memory_size_gb': round(psutil.virtual_memory().total / (1024**3), 2)
+                                    }
+                                }
+                                print(f'[시스템 정보] {json.dumps(system_info, indent=2, ensure_ascii=False)}')
+                            
+                            time.sleep(RunComputer.settings.get('system_interval', 20))
+                    except Exception as e:
+                        print(f'시스템 정보 모니터링 오류: {e}')
+                
+                def _load_monitor():
+                    try:
+                        while RunComputer.running:
+                            # 시스템 부하 출력
+                            if RunComputer.settings.get('show_load_info', True):
+                                load_info = {
+                                    'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                    'load_info': {
+                                        'cpu_usage_percent': round(psutil.cpu_percent(interval=1), 2),
+                                        'memory_usage_percent': round(psutil.virtual_memory().percent, 2),
+                                        'memory_available_gb': round(psutil.virtual_memory().available / (1024**3), 2)
+                                    }
+                                }
+                                print(f'[시스템 부하] {json.dumps(load_info, indent=2, ensure_ascii=False)}')
+                            
+                            time.sleep(RunComputer.settings.get('system_interval', 20))
+                    except Exception as e:
+                        print(f'시스템 부하 모니터링 오류: {e}')
+                
+                # 시스템 모니터링 스레드 시작
+                threading.Thread(target=_system_monitor, daemon=True).start()
+                threading.Thread(target=_load_monitor, daemon=True).start()
+                
+                # 센서 데이터 지속 출력 (5초마다 반복)
+                print('센서 데이터 모니터링 시작 (5초마다 반복)')
                 try:
                     while RunComputer.running:
                         # 센서 값 가져오기

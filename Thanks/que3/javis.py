@@ -9,7 +9,6 @@ import re
 
 
 class JavisSystem:
-    """JAVIS 시스템의 메인 클래스"""
     
     def __init__(self):
         """시스템 초기화"""
@@ -29,7 +28,7 @@ class JavisSystem:
     def get_current_timestamp(self):
         """현재 날짜와 시간을 '년월일-시간분초' 형태로 반환"""
         now = datetime.now()
-        return now.strftime('%Y%m%d-%H%M%S')
+        return now.strftime('%Y%m%d-%H%M%S') # 년월일-시간분초 -> Ymd-HMS
     
     def list_microphones(self):
         """사용 가능한 마이크 목록을 출력"""
@@ -42,7 +41,7 @@ class JavisSystem:
     
     def record_audio(self, duration=5, device_index=None):
         """
-        음성을 녹음하는 함수
+        음성 녹음
         
         Args:
             duration (int): 녹음 시간 (초)
