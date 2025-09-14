@@ -7,7 +7,6 @@ import os
 import psutil
 import threading
 import multiprocessing
-import queue
 import signal
 import sys
 
@@ -139,7 +138,7 @@ class MissionComputer:
                 
                 # 5분 평균 계산 (보너스)
                 current_time = time.time()
-                if current_time - self.last_average_time >= 300:  # 5분 = 300초
+                if current_time - self.last_average_time >= 20:  # 5분 = 300초
                     self.calculate_5min_average()
                     self.last_average_time = current_time
                 
@@ -155,7 +154,7 @@ class MissionComputer:
             return
         
         current_time = time.time()
-        five_min_ago = current_time - 300
+        five_min_ago = current_time - 20
         
         # 5분 이내 데이터만 필터링
         recent_data = [item for item in self.env_history if item['timestamp'] >= five_min_ago]
@@ -431,7 +430,7 @@ def main():
                         
                         # 5분 평균 계산 (보너스)
                         current_time = time.time()
-                        if current_time - RunComputer.last_average_time >= 300:  # 5분 = 300초
+                        if current_time - RunComputer.last_average_time >= 20:  # 5분 = 300초
                             RunComputer.calculate_5min_average()
                             RunComputer.last_average_time = current_time
                         

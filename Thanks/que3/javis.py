@@ -6,6 +6,7 @@ import pandas as pd
 from datetime import datetime
 import glob
 import re
+import whisper
 
 
 class JavisSystem:
@@ -19,6 +20,15 @@ class JavisSystem:
         self.chunk = 1024
         self.audio = pyaudio.PyAudio()
         self.recognizer = sr.Recognizer()
+        
+        # Whisper 모델 로드 (base 모델 사용)
+        try:
+            print("Whisper 모델 로딩 중...")
+            self.whisper_model = whisper.load_model("base")
+            print("Whisper 모델 로드 완료!")
+        except Exception as e:
+            print(f"Whisper 모델 로드 실패: {e}")
+            self.whisper_model = None
         
         # records 폴더가 없으면 생성
         if not os.path.exists(self.records_dir):
@@ -145,26 +155,68 @@ class JavisSystem:
         try:
             print(f'음성 인식 중: {os.path.basename(audio_file_path)}')
             
-            # 음성 파일 로드
+            # 음성 파일 로드 및 전처리
             with sr.AudioFile(audio_file_path) as source:
+                # 배경 소음 조정
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
                 audio = self.recognizer.record(source)
             
-            # 음성 인식 (Google Speech Recognition 사용)
-            text = self.recognizer.recognize_google(audio, language='ko-KR')
+            # 여러 음성 인식 엔진 시도 (Whisper -> Sphinx)
+            engines = []
             
-            # 전체 텍스트를 시간 정보와 함께 반환
-            # 실제로는 더 정교한 시간 분할이 필요하지만, 여기서는 전체 텍스트를 반환
-            return [(0, text)]
+            # Whisper 우선 사용 (가장 정확함)
+            if self.whisper_model:
+                try:
+                    segments = self._whisper_recognize(audio_file_path)
+                    print(f'Whisper STT 성공: {len(segments)}개 세그먼트 인식')
+                    return segments
+                except Exception as e:
+                    print(f'Whisper STT 실패: {e}')
+
+            # 오프라인 대안으로 Sphinx 추가
+            engines = [('Sphinx', lambda: self.recognizer.recognize_sphinx(audio))]
+
+            for engine_name, recognize_func in engines:
+                try:
+                    text = recognize_func()
+                    print(f'{engine_name} STT 성공: {text}')
+                    return [(0, text)]
+                except sr.RequestError as e:
+                    print(f'{engine_name} STT 실패: {e}')
+                    continue
+                except sr.UnknownValueError:
+                    print(f'{engine_name} STT: 음성을 인식할 수 없음')
+                    continue
+                except ImportError as e:
+                    print(f'{engine_name} STT: 필요한 모듈이 설치되지 않음 ({e})')
+                    continue
+                except Exception as e:
+                    print(f'{engine_name} STT: 예상치 못한 오류 ({e})')
+                    continue
+            
+            # 모든 엔진이 실패한 경우 더미 텍스트 반환
+            print('모든 STT 엔진 실패 - 기본 텍스트 반환')
+            return [(0, f'[STT 실패] 파일: {os.path.basename(audio_file_path)}')]
             
         except sr.UnknownValueError:
             print('음성을 인식할 수 없습니다.')
             return [(0, '음성 인식 실패')]
-        except sr.RequestError as e:
-            print(f'음성 인식 서비스 오류: {e}')
-            return [(0, '음성 인식 서비스 오류')]
         except Exception as e:
             print(f'음성 인식 중 오류 발생: {e}')
             return [(0, f'오류: {e}')]
+    
+    def _whisper_recognize(self, audio_file_path):
+        """Whisper를 사용한 음성 인식"""
+        try:
+            result = self.whisper_model.transcribe(audio_file_path, language='ko')
+            segments = []
+            for segment in result['segments']:
+                start_time = round(segment['start'], 2)
+                text = segment['text'].strip()
+                segments.append((start_time, text))
+            return segments if segments else [(0, result["text"].strip())]
+        except Exception as e:
+            raise Exception(f"Whisper 인식 실패: {e}")
     
     def save_to_csv(self, audio_file_path, text_data):
         """
