@@ -32,10 +32,55 @@ def read_log_file(log_file_path, show_content=True):
         return None
 
 
+def validate_log_format(lines):
+    """로그 포맷 검증"""
+    errors = []
+    
+    # 1. 헤더 형식 검증
+    if len(lines) == 0:
+        errors.append("빈 파일입니다.")
+        return errors
+        
+    header = lines[0].strip()
+    expected_header = "timestamp,event,message"
+    
+    if header != expected_header:
+        errors.append(f"헤더 형식 오류: '{header}' (예상: '{expected_header}')")
+    
+    # 2. 각 라인별 포맷 검증
+    for i, line in enumerate(lines[1:], 2):  # 2번째 라인부터 (라인 번호는 2부터)
+        if not line.strip():
+            continue
+            
+        # 2-1. 콤마로 구분된 필드 개수 검증
+        parts = line.split(',', 2)
+        if len(parts) != 3:
+            errors.append(f"라인 {i}: 필드 개수 오류 - {len(parts)}개 (예상: 3개)")
+            continue
+        
+        # 2-2. timestamp 형식 검증
+        timestamp = parts[0].strip()
+        try:
+            datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            errors.append(f"라인 {i}: timestamp 형식 오류 - '{timestamp}' (예상: YYYY-MM-DD HH:MM:SS)")
+    
+    return errors
+
+
 def parse_log_content(content, show_output=True):
     try:
         lines = content.strip().split('\n')
         log_entries = []
+        
+        # 로그 포맷 검증
+        format_errors = validate_log_format(lines)
+        if format_errors:
+            print('\n=== 로그 포맷 오류 발견 ===')
+            for error in format_errors:
+                print(f"오류: {error}")
+            print('=' * 50)
+            return []
         
         # 첫 번째 라인은 헤더이므로 건너뛰기
         for line in lines[1:]:
@@ -43,8 +88,9 @@ def parse_log_content(content, show_output=True):
                 parts = line.split(',', 2)  # 시간, 로그레벨, 내용으로 분리
                 if len(parts) >= 3:
                     timestamp = parts[0].strip()
+                    event = parts[1].strip()
                     message = parts[2].strip()
-                    log_entries.append([timestamp, message])
+                    log_entries.append([timestamp, event, message])
         
         if show_output:            
             print('\n=== 파싱된 리스트 객체 ===')
@@ -92,7 +138,8 @@ def convert_to_dict(sorted_entries):
             log_dict['mission_log'].append({
                 'index': i + 1,
                 'timestamp': entry[0],
-                'message': entry[1]
+                'event': entry[1],
+                'message': entry[2]
             })
             
         print('\n=== Dict 객체로 변환 완료 ===')
@@ -130,7 +177,7 @@ def filter_danger_logs(log_entries):
     
     try:
         for entry in log_entries:
-            message_lower = entry[1].lower() # 소문자로 전부 변형해서 찾기
+            message_lower = entry[2].lower() # 소문자로 전부 변형해서 찾기 (message는 3번째 필드)
             for keyword in danger_keywords:
                 if keyword.lower() in message_lower:
                     dangerous_logs.append(entry)
@@ -139,7 +186,7 @@ def filter_danger_logs(log_entries):
         print(f"\n=== 위험 키워드 필터링 결과 ===")
         print(f"총 {len(dangerous_logs)}개의 위험 로그가 발견되었습니다:")
         for entry in dangerous_logs:
-            print(f"  {entry[0]} -  {entry[1]}")
+            print(f"  {entry[0]} - {entry[1]} - {entry[2]}")
         print('=' * 50)
         
         return dangerous_logs
@@ -162,7 +209,8 @@ def save_danger_logs(dangerous_logs, output_file_path):
             danger_dict['dangerous_logs'].append({
                 'index': i + 1,
                 'timestamp': entry[0],
-                'message': entry[1]
+                'event': entry[1],
+                'message': entry[2]
             })
             
         with open(output_file_path, 'w', encoding='utf-8') as file:
@@ -193,7 +241,7 @@ def generate_analysis_report(dangerous_logs, output_file_path):
         if dangerous_logs:
             report_content += '### 발견된 위험 로그:\n\n'
             for i, log in enumerate(dangerous_logs, 1):
-                report_content += f"{i}. **{log[0]}** - {log[1]}\n"
+                report_content += f"{i}. **{log[0]}** - {log[1]} - {log[2]}\n"
 
         else:
             report_content += '### 위험 로그 없음\n모든 시스템이 정상적으로 작동했습니다.\n\n'
